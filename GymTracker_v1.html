@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GymLog Cloud">
+    <title>GymLog Cloud Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --muted: #94a3b8;
+            --accent: #3b82f6; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; --border: #334155;
+        }
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 12px 14px 90px 14px; }
+        h3 { margin-top: 0; margin-bottom: 12px; font-size: 17px; }
+        .card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 14px; border: 1px solid var(--border); }
+        label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+        select, input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 8px; font-size: 16px; margin-bottom: 12px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        button { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; color: white; transition: opacity 0.2s; }
+        button:active { opacity: 0.7; }
+        .btn-primary { background: var(--accent); }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); padding: 6px 10px; font-size: 13px; width: auto; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+
+        /* Cabecera de estado Cloud + Cronómetro */
+        .top-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 14px; }
+        .timer-box { flex: 1; display: flex; justify-content: space-between; align-items: center; background: #1e1b4b; padding: 8px 12px; border-radius: 10px; border: 1px solid #4338ca; }
+        .timer-display { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; color: #818cf8; }
+        .timer-btns button { width: auto; padding: 6px 8px; font-size: 11px; margin-left: 3px; background: #312e81; }
+        
+        .cloud-pill { background: var(--card); border: 1px solid var(--border); padding: 8px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; height: 48px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .dot.ok { background: var(--success); box-shadow: 0 0 8px var(--success); }
+        .dot.sync { background: var(--warning); animation: pulse 1s infinite; }
+        .dot.off { background: var(--danger); }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        .last-session { background: rgba(59, 130, 246, 0.12); border-left: 4px solid var(--accent); padding: 10px 12px; border-radius: 6px; margin-bottom: 14px; font-size: 13px; line-height: 1.4; }
+        .last-session span { color: #60a5fa; font-weight: bold; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; color: var(--muted); padding: 8px 4px; border-bottom: 1px solid var(--border); }
+        td { padding: 10px 4px; border-bottom: 1px solid var(--border); }
+        .badge { background: var(--border); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0 22px 0; z-index: 100; }
+        .nav-item { background: none; border: none; color: var(--muted); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px; width: 25%; }
+        .nav-item.active { color: var(--accent); font-weight: bold; }
+        .view { display: none; }
+        .view.active { display: block; }
+    </style>
+</head>
+<body>
+
+    <!-- BARRA SUPERIOR: CRONÓMETRO + ESTADO DE GOOGLE DRIVE -->
+    <div class="top-bar">
+        <div class="timer-box">
+            <div>
+                <span style="font-size:10px; color:#a5b4fc; display:block;">DESCANSO</span>
+                <span class="timer-display" id="timerDisplay">00:00</span>
+            </div>
+            <div class="timer-btns">
+                <button onclick="startTimer(60)">1m</button>
+                <button onclick="startTimer(90)">1:30</button>
+                <button onclick="startTimer(120)">2m</button>
+                <button onclick="stopTimer()" style="background:#ef4444;">✕</button>
+            </div>
+        </div>
+        <div class="cloud-pill" onclick="syncFromCloud(true)" title="Toca para sincronizar con Drive">
+            <span id="cloudDot" class="dot off"></span>
+            <span id="cloudText">Sin URL</span>
+        </div>
+    </div>
+
+    <!-- VISTA 1: ENTRENAR -->
+    <div id="view-train" class="view active">
+        <div class="card">
+            <div class="grid-2">
+                <div>
+                    <label>Día / Rutina</label>
+                    <select id="selectRoutine" onchange="loadExercisesForRoutine()"></select>
+                </div>
+                <div>
+                    <label>Ejercicio</label>
+                    <select id="selectExercise" onchange="showLastStats()"></select>
+                </div>
+            </div>
+
+            <div class="last-session">
+                Última sesión: <span id="lastSessionText">Cargando...</span>
+            </div>
+
+            <div class="grid-3">
+                <div>
+                    <label>Peso (kg)</label>
+                    <input type="number" id="inputWeight" step="0.5" placeholder="0" inputmode="decimal">
+                </div>
+                <div>
+                    <label>Reps</label>
+                    <input type="number" id="inputReps" placeholder="0" inputmode="numeric">
+                </div>
+                <div>
+                    <label>RIR</label>
+                    <input type="number" id="inputRir" step="0.5" placeholder="-" inputmode="decimal">
+                </div>
+            </div>
+
+            <label>Notas de la serie (opcional)</label>
+            <input type="text" id="inputNotes" placeholder="Ej: Subir peso próximo día, molestia...">
+
+            <button class="btn-success" onclick="addSet()">+ ANOTAR SERIE</button>
+        </div>
+
+        <div class="card">
+            <h3>Series de hoy (<span id="todayCount">0</span>)</h3>
+            <table id="todayTable">
+                <thead>
+                    <tr><th>Ejercicio</th><th>#</th><th>Kg × Reps</th><th>1RM</th><th></th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- VISTA 2: MÉTRICAS RÁPIDAS EN MÓVIL -->
+    <div id="view-metrics" class="view">
+        <div class="card">
+            <h3>Evolución en Directo</h3>
+            <label>Ejercicio</label>
+            <select id="metricExercise" onchange="updateChart()"></select>
+            
+            <label>Métrica</label>
+            <select id="metricType" onchange="updateChart()">
+                <option value="1rm">1RM Estimado (Fuerza)</option>
+                <option value="maxWeight">Peso Máximo (kg)</option>
+                <option value="volume">Volumen de Sesión (kg)</option>
+            </select>
+            <div style="margin-top: 10px;">
+                <canvas id="progressChart" height="210"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Récords Históricos (PRs)</h3>
+            <div id="prSummary" style="font-size:13px; line-height:1.7;"></div>
+        </div>
+    </div>
+
+    <!-- VISTA 3: GESTIÓN DE RUTINAS (SINCRONIZADO CON DRIVE) -->
+    <div id="view-routines" class="view">
+        <div class="card">
+            <h3>Editar Ejercicios de Rutina</h3>
+            <p style="font-size:12px; color:var(--muted); margin-top:0;">Cualquier cambio aquí actualiza la pestaña <b>Config_Rutinas</b> en tu Google Drive.</p>
+            
+            <label>Día de Rutina</label>
+            <select id="editRoutineSelect" onchange="renderRoutineEditor()"></select>
+
+            <div style="display:flex; gap:8px; margin-bottom:15px;">
+                <input type="text" id="newExerciseName" placeholder="Nuevo ejercicio..." style="margin:0;">
+                <button class="btn-primary" style="width:auto; white-space:nowrap;" onclick="addExerciseToRoutine()">+ Añadir</button>
+            </div>
+
+            <div id="routineExercisesList"></div>
+        </div>
+
+        <div class="card">
+            <h3>Añadir / Eliminar Día</h3>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="newRoutineName" placeholder="Ej: Torso A / Fullbody..." style="margin:0;">
+                <button class="btn-primary" style="width:auto;" onclick="createNewRoutine()">Crear</button>
+            </div>
+            <button class="btn-danger" style="margin-top:12px; width:100%; padding:10px;" onclick="deleteCurrentRoutine()">Eliminar rutina seleccionada</button>
+        </div>
+    </div>
+
+    <!-- VISTA 4: CONEXIÓN GOOGLE DRIVE Y DATOS -->
+    <div id="view-data" class="view">
+        <div class="card" style="border-color: var(--accent);">
+            <h3>☁️ Conexión con tu Google Drive</h3>
+            <label>URL de tu Google Apps Script (/exec)</label>
+            <input type="url" id="inputApiUrl" placeholder="https://script.google.com/macros/s/.../exec">
+            <div class="grid-2">
+                <button class="btn-primary" onclick="saveApiUrl()">Guardar y Conectar</button>
+                <button class="btn-outline" onclick="syncFromCloud(true)">🔄 Forzar Descarga</button>
+            </div>
+            <button class="btn-outline" style="margin-top:10px; border-color:#10b981; color:#10b981;" onclick="triggerDriveSnapshot()">
+                💾 Crear Snapshot .JSON en mi Drive (5TB)
+            </button>
+        </div>
+
+        <div class="card">
+            <h3>Exportación Local (CSV / Excel)</h3>
+            <button class="btn-outline" onclick="exportCSV()">📥 Descargar CSV en el móvil</button>
+        </div>
+
+        <div class="card">
+            <h3>Últimos Registros (<span id="totalLogsCount">0</span> series)</h3>
+            <div style="max-height: 260px; overflow-y: auto;">
+                <table id="allLogsTable">
+                    <thead><tr><th>Fecha</th><th>Ejercicio</th><th>Serie</th><th></th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- NAVEGACIÓN INFERIOR -->
+    <div class="bottom-nav">
+        <button class="nav-item active" onclick="switchView('train', this)">🏋️‍♂️<span>Entrenar</span></button>
+        <button class="nav-item" onclick="switchView('metrics', this)">📈<span>Métricas</span></button>
+        <button class="nav-item" onclick="switchView('routines', this)">⚙️<span>Rutinas</span></button>
+        <button class="nav-item" onclick="switchView('data', this)">☁️<span>Nube/Datos</span></button>
+    </div>
+
+<script>
+    // --- PEGA AQUÍ TU URL SI QUIERES DEJARLA FIJA EN EL CÓDIGO, O INTRODÚCELA EN LA PESTAÑA "NUBE/DATOS" ---
+    const DEFAULT_API_URL = ""; 
+
+    const defaultRoutines = {
+        "Empuje (Push)": ["Press Banca", "Press Inclinado Mancuernas", "Press Militar"],
+        "Tirón (Pull)": ["Dominadas / Jalón al Pecho", "Remo con Barra"],
+        "Pierna (Legs)": ["Sentadilla Libre", "Peso Muerto Rumano"]
+    };
+
+    let apiUrl = localStorage.getItem('gym_api_url') || DEFAULT_API_URL;
+    let routines = JSON.parse(localStorage.getItem('gym_routines')) || defaultRoutines;
+    let logs = JSON.parse(localStorage.getItem('gym_logs')) || [];
+    let pendingQueue = JSON.parse(localStorage.getItem('gym_pending_queue')) || [];
+    let chartInstance = null;
+    let timerInterval = null;
+    let timerSeconds = 0;
+
+    function saveLocalState() {
+        localStorage.setItem('gym_routines', JSON.stringify(routines));
+        localStorage.setItem('gym_logs', JSON.stringify(logs));
+        localStorage.setItem('gym_pending_queue', JSON.stringify(pendingQueue));
+    }
+
+    // --- GESTIÓN DE ESTADO CLOUD ---
+    function setCloudStatus(state, text) {
+        const dot = document.getElementById('cloudDot');
+        const label = document.getElementById('cloudText');
+        dot.className = 'dot ' + state;
+        label.innerText = text;
+    }
+
+    function saveApiUrl() {
+        const val = document.getElementById('inputApiUrl').value.trim();
+        if(!val.startsWith("https://script.google.com/")) {
+            alert("La URL debe empezar por https://script.google.com/... y terminar en /exec");
+            return;
+        }
+        apiUrl = val;
+        localStorage.setItem('gym_api_url', apiUrl);
+        syncFromCloud(true);
+    }
+
+    // --- COMUNICACIÓN CON GOOGLE APPS SCRIPT ---
+    async function sendToCloud(payload) {
+        if(!apiUrl) {
+            setCloudStatus('off', 'Sin URL');
+            return;
+        }
+        setCloudStatus('sync', 'Guardando...');
+        try {
+            // Usamos text/plain para evitar bloqueos CORS preflight (OPTIONS) en Safari iOS
+            const res = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if(data.status === 'ok') {
+                setCloudStatus('ok', 'Drive OK');
+            } else {
+                throw new Error(data.message || 'Error en respuesta');
+            }
+        } catch (err) {
+            console.warn("Fallo de red, guardando en cola pendiente:", err);
+            pendingQueue.push(payload);
+            saveLocalState();
+            setCloudStatus('off', `Offline (${pendingQueue.length})`);
+        }
+    }
+
+    async function flushPendingQueue() {
+        if(!apiUrl || pendingQueue.length === 0) return;
+        setCloudStatus('sync', 'Subiendo cola...');
+        while(pendingQueue.length > 0) {
+            const item = pendingQueue[0];
+            try {
+                const res = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(item)
+                });
+                const data = await res.json();
+                if(data.status === 'ok') {
+                    pendingQueue.shift();
+                    saveLocalState();
+                } else break;
+            } catch(e) { break; }
+        }
+    }
+
+    async function syncFromCloud(showAlert = false) {
+        if(!apiUrl) {
+            setCloudStatus('off', 'Sin URL');
+            return;
+        }
+        try {
+            await flushPendingQueue();
+            setCloudStatus('sync', 'Sincronizando...');
+            const res = await fetch(apiUrl);
+            const data = await res.json();
+            if(data.status === 'ok') {
+                if(data.routines && Object.keys(data.routines).length > 0) routines = data.routines;
+                if(data.logs) logs = data.logs;
+                saveLocalState();
+                initTrainView();
+                renderAllLogs();
+                setCloudStatus('ok', 'Drive OK');
+                if(showAlert) alert("✅ Sincronizado con tu Google Drive (" + logs.length + " series cargadas).");
+            }
+        } catch(err) {
+            setCloudStatus('off', 'Offline');
+            if(showAlert) alert("No se pudo conectar con Google Drive. Comprueba tu conexión o que el permiso del script esté en 'Cualquier persona'.");
+        }
+    }
+
+    async function triggerDriveSnapshot() {
+        if(!apiUrl) { alert("Configura primero tu URL de Google Apps Script."); return; }
+        await sendToCloud({
+            action: "snapshotDrive",
+            fullState: { exportDate: new Date().toISOString(), routines, logs }
+        });
+        alert("📁 Snapshot JSON guardado en la carpeta 'GymTracker_Backups_JSON' de tu Google Drive.");
+    }
+
+    // --- NAVEGACIÓN ---
+    function switchView(viewName, btn) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        document.getElementById('view-' + viewName).classList.add('active');
+        btn.classList.add('active');
+
+        if(viewName === 'metrics') { populateMetricExercises(); updateChart(); renderPRs(); }
+        if(viewName === 'routines') { renderRoutineEditor(); }
+        if(viewName === 'data') { 
+            document.getElementById('inputApiUrl').value = apiUrl;
+            renderAllLogs(); 
+        }
+    }
+
+    // --- LÓGICA DE ENTRENAMIENTO ---
+    function initTrainView() {
+        const rSelect = document.getElementById('selectRoutine');
+        const editSelect = document.getElementById('editRoutineSelect');
+        const currentR = rSelect.value;
+        rSelect.innerHTML = ''; editSelect.innerHTML = '';
+        
+        Object.keys(routines).forEach(r => {
+            rSelect.innerHTML += `<option value="${r}">${r}</option>`;
+            editSelect.innerHTML += `<option value="${r}">${r}</option>`;
+        });
+        if(currentR && routines[currentR]) rSelect.value = currentR;
+        loadExercisesForRoutine();
+        renderTodayTable();
+    }
+
+    function loadExercisesForRoutine() {
+        const r = document.getElementById('selectRoutine').value;
+        const eSelect = document.getElementById('selectExercise');
+        eSelect.innerHTML = '';
+        if(routines[r]) {
+            routines[r].forEach(ex => {
+                eSelect.innerHTML += `<option value="${ex}">${ex}</option>`;
+            });
+        }
+        showLastStats();
+    }
+
+    function getTodayISO() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+
+    function showLastStats() {
+        const ex = document.getElementById('selectExercise').value;
+        const today = getTodayISO();
+        const exLogs = logs.filter(l => l.exercise === ex);
+        const box = document.getElementById('lastSessionText');
+        
+        if(exLogs.length === 0) {
+            box.innerText = "Sin registros previos";
+            return;
+        }
+        const prevLogs = exLogs.filter(l => l.date !== today);
+        const targetDate = prevLogs.length > 0 ? prevLogs[prevLogs.length - 1].date : today;
+        const sessionSets = exLogs.filter(l => l.date === targetDate);
+        
+        const summary = sessionSets.map(s => `${s.weight}kg×${s.reps}${s.rir !== "" ? ' (@'+s.rir+')' : ''}`).join(' | ');
+        box.innerText = `[${targetDate}] ${summary}`;
+        
+        const lastSet = sessionSets[sessionSets.length - 1];
+        document.getElementById('inputWeight').value = lastSet.weight;
+        document.getElementById('inputReps').value = lastSet.reps;
+    }
+
+    function addSet() {
+        const routine = document.getElementById('selectRoutine').value;
+        const exercise = document.getElementById('selectExercise').value;
+        const weight = parseFloat(document.getElementById('inputWeight').value);
+        const reps = parseInt(document.getElementById('inputReps').value);
+        const rir = document.getElementById('inputRir').value;
+        const notes = document.getElementById('inputNotes').value.trim();
+
+        if(isNaN(weight) || isNaN(reps) || reps <= 0) {
+            alert("Introduce peso y repeticiones válidos.");
+            return;
+        }
+
+        const today = getTodayISO();
+        const todayExSets = logs.filter(l => l.date === today && l.exercise === exercise);
+        const newSet = {
+            id: Date.now(),
+            date: today,
+            routine,
+            exercise,
+            set: todayExSets.length + 1,
+            weight,
+            reps,
+            rir: rir !== "" ? parseFloat(rir) : "",
+            volume: +(weight * reps).toFixed(1),
+            e1rm: +(weight * (1 + reps / 30)).toFixed(1),
+            notes
+        };
+
+        logs.push(newSet);
+        saveLocalState();
+        document.getElementById('inputNotes').value = '';
+        renderTodayTable();
+        showLastStats();
+        startTimer(90);
+
+        // Enviar a Google Drive en segundo plano
+        sendToCloud({ action: "addSet", data: newSet });
+    }
+
+    function deleteLog(id) {
+        if(!confirm("¿Borrar esta serie?")) return;
+        logs = logs.filter(l => l.id !== id);
+        saveLocalState();
+        renderTodayTable();
+        renderAllLogs();
+        showLastStats();
+        sendToCloud({ action: "deleteSet", id: id });
+    }
+
+    function renderTodayTable() {
+        const today = getTodayISO();
+        const todayLogs = logs.filter(l => l.date === today).reverse();
+        document.getElementById('todayCount').innerText = todayLogs.length;
+        const tbody = document.querySelector('#todayTable tbody');
+        tbody.innerHTML = '';
+        todayLogs.forEach(l => {
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${l.exercise}</strong>${l.notes ? `<br><small style="color:var(--muted)">${l.notes}</small>` : ''}</td>
+                    <td><span class="badge">#${l.set}</span></td>
+                    <td>${l.weight}kg × ${l.reps} ${l.rir !== "" ? `<small style="color:var(--muted)">(${l.rir})</small>` : ''}</td>
+                    <td>${l.e1rm}</td>
+                    <td><button class="btn-danger" onclick="deleteLog(${l.id})">✕</button></td>
+                </tr>`;
+        });
+    }
+
+    // --- CRONÓMETRO ---
+    function startTimer(sec) {
+        clearInterval(timerInterval);
+        timerSeconds = sec;
+        updateTimerDisplay();
+        timerInterval = setInterval(() => {
+            timerSeconds--;
+            updateTimerDisplay();
+            if(timerSeconds <= 0) {
+                clearInterval(timerInterval);
+                document.getElementById('timerDisplay').innerText = "¡LISTO!";
+            }
+        }, 1000);
+    }
+    function stopTimer() { clearInterval(timerInterval); timerSeconds = 0; updateTimerDisplay(); }
+    function updateTimerDisplay() {
+        const m = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+        const s = String(timerSeconds % 60).padStart(2, '0');
+        document.getElementById('timerDisplay').innerText = `${m}:${s}`;
+    }
+
+    // --- GESTIÓN DE RUTINAS Y SINCRONIZACIÓN ---
+    function renderRoutineEditor() {
+        const r = document.getElementById('editRoutineSelect').value;
+        const container = document.getElementById('routineExercisesList');
+        container.innerHTML = '';
+        if(!routines[r]) return;
+        routines[r].forEach((ex, idx) => {
+            container.innerHTML += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
+                    <span>${ex}</span>
+                    <button class="btn-danger" onclick="removeExerciseFromRoutine('${r}', ${idx})">Quitar</button>
+                </div>`;
+        });
+    }
+
+    function syncRoutinesToCloud() {
+        saveLocalState();
+        initTrainView();
+        renderRoutineEditor();
+        sendToCloud({ action: "saveRoutines", routines: routines });
+    }
+
+    function addExerciseToRoutine() {
+        const r = document.getElementById('editRoutineSelect').value;
+        const name = document.getElementById('newExerciseName').value.trim();
+        if(!name) return;
+        routines[r].push(name);
+        document.getElementById('newExerciseName').value = '';
+        syncRoutinesToCloud();
+    }
+
+    function removeExerciseFromRoutine(r, idx) {
+        routines[r].splice(idx, 1);
+        syncRoutinesToCloud();
+    }
+
+    function createNewRoutine() {
+        const name = document.getElementById('newRoutineName').value.trim();
+        if(!name || routines[name]) return;
+        routines[name] = [];
+        document.getElementById('newRoutineName').value = '';
+        syncRoutinesToCloud();
+        document.getElementById('editRoutineSelect').value = name;
+        renderRoutineEditor();
+    }
+
+    function deleteCurrentRoutine() {
+        const r = document.getElementById('editRoutineSelect').value;
+        if(Object.keys(routines).length <= 1) { alert("Debe quedar al menos una rutina."); return; }
+        if(confirm(`¿Eliminar la rutina "${r}"?`)) {
+            delete routines[r];
+            syncRoutinesToCloud();
+        }
+    }
+
+    // --- MÉTRICAS ---
+    function populateMetricExercises() {
+        const sel = document.getElementById('metricExercise');
+        const currentVal = sel.value;
+        const allEx = new Set();
+        Object.values(routines).flat().forEach(e => allEx.add(e));
+        logs.forEach(l => allEx.add(l.exercise));
+        sel.innerHTML = '';
+        allEx.forEach(ex => sel.innerHTML += `<option value="${ex}">${ex}</option>`);
+        if(currentVal && allEx.has(currentVal)) sel.value = currentVal;
+    }
+
+    function updateChart() {
+        const ex = document.getElementById('metricExercise').value;
+        const type = document.getElementById('metricType').value;
+        const exLogs = logs.filter(l => l.exercise === ex);
+        const grouped = {};
+        exLogs.forEach(l => {
+            if(!grouped[l.date]) grouped[l.date] = [];
+            grouped[l.date].push(l);
+        });
+        const dates = Object.keys(grouped).sort();
+        const dataPoints = dates.map(d => {
+            const sets = grouped[d];
+            if(type === '1rm') return Math.max(...sets.map(s => s.e1rm));
+            if(type === 'maxWeight') return Math.max(...sets.map(s => s.weight));
+            if(type === 'volume') return sets.reduce((acc, s) => acc + s.volume, 0);
+        });
+
+        const ctx = document.getElementById('progressChart').getContext('2d');
+        if(chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{ label: ex, data: dataPoints, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.2)', borderWidth: 2, tension: 0.25, fill: true }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                }
+            }
+        });
+    }
+
+    function renderPRs() {
+        const prBox = document.getElementById('prSummary');
+        if(logs.length === 0) { prBox.innerText = "Aún no hay datos."; return; }
+        const prs = {};
+        logs.forEach(l => { if(!prs[l.exercise] || l.e1rm > prs[l.exercise].e1rm) prs[l.exercise] = l; });
+        prBox.innerHTML = Object.values(prs).map(p => 
+            `<div>• <strong>${p.exercise}:</strong> ${p.weight}kg × ${p.reps} <span style="color:var(--accent)">(1RM: ${p.e1rm}kg)</span> <small style="color:var(--muted)">[${p.date}]</small></div>`
+        ).join('');
+    }
+
+    function renderAllLogs() {
+        document.getElementById('totalLogsCount').innerText = logs.length;
+        const tbody = document.querySelector('#allLogsTable tbody');
+        tbody.innerHTML = '';
+        [...logs].reverse().slice(0, 80).forEach(l => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${l.date}</td>
+                    <td>${l.exercise} <span class="badge">#${l.set}</span></td>
+                    <td>${l.weight}kg × ${l.reps}</td>
+                    <td><button class="btn-danger" onclick="deleteLog(${l.id})">✕</button></td>
+                </tr>`;
+        });
+    }
+
+    function exportCSV() {
+        if(logs.length === 0) { alert("No hay datos."); return; }
+        let csv = "\uFEFFFecha;Rutina;Ejercicio;Serie;Peso_kg;Repeticiones;RIR;Volumen_kg;1RM_Estimado_kg;Notas\n";
+        logs.forEach(l => {
+            csv += `${l.date};${l.routine};${l.exercise};${l.set};${String(l.weight).replace('.',',')};${l.reps};${String(l.rir).replace('.',',')};${String(l.volume).replace('.',',')};${String(l.e1rm).replace('.',',')};${(l.notes||"").replace(/;/g,',')}\n`;
+        });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        a.download = `GymLog_${getTodayISO()}.csv`;
+        a.click();
+    }
+
+    // --- ARRANQUE ---
+    initTrainView();
+    if(apiUrl) syncFromCloud(false);
+</script>
+</body>
+</html>
