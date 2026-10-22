@@ -1,0 +1,5 @@
+-- Usar una foto o logo tuyo personalizado --
+Si en algún momento prefieres poner una imagen tuya en lugar de este icono generado por código:
+Sube tu imagen cuadrada a la misma carpeta de tu repositorio de GitHub con el nombre icon.png.
+En el <head> de tu index.html, pon simplemente esta línea:
+<link rel="apple-touch-icon" href="icon.png">
