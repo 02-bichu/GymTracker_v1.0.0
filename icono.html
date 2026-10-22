@@ -1,0 +1,62 @@
+<!-- GENERADOR AUTOMÁTICO DE ICONO PARA IPHONE (APPLE TOUCH ICON) -->
+    <script>
+        (function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Fondo oscuro degradado estilo iOS
+            const grad = ctx.createLinearGradient(0, 0, 512, 512);
+            grad.addColorStop(0, '#1e293b');
+            grad.addColorStop(1, '#0f172a');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // 2. Círculo sutil de resplandor detrás
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.12)';
+            ctx.beginPath();
+            ctx.arc(256, 256, 190, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 3. Dibujar Mancuerna (rotada -35 grados)
+            ctx.save();
+            ctx.translate(256, 256);
+            ctx.rotate(-Math.PI / 5);
+
+            // Barra central (Gris metálico)
+            ctx.fillStyle = '#94a3b8';
+            ctx.beginPath();
+            ctx.roundRect(-130, -18, 260, 36, 10);
+            ctx.fill();
+
+            // Discos interiores (Azul eléctrico)
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.roundRect(-155, -95, 48, 190, 16);
+            ctx.roundRect(107, -95, 48, 190, 16);
+            ctx.fill();
+
+            // Discos exteriores (Verde esmeralda de acento)
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.roundRect(-205, -65, 38, 130, 14);
+            ctx.roundRect(167, -65, 38, 130, 14);
+            ctx.fill();
+
+            ctx.restore();
+
+            // 4. Inyectar como PNG nativo para iOS y Favicon
+            const iconUrl = canvas.toDataURL('image/png');
+            const appleIcon = document.createElement('link');
+            appleIcon.rel = 'apple-touch-icon';
+            appleIcon.href = iconUrl;
+            document.head.appendChild(appleIcon);
+
+            const favIcon = document.createElement('link');
+            favIcon.rel = 'icon';
+            favIcon.type = 'image/png';
+            favIcon.href = iconUrl;
+            document.head.appendChild(favIcon);
+        })();
+    </script>
