@@ -1,5 +1,4 @@
-<!-- GENERADOR AUTOMÁTICO DE ICONO PARA IPHONE (APPLE TOUCH ICON) -->
-    <script>
+// GENERADOR AUTOMÁTICO DE ICONO PARA IPHONE (APPLE TOUCH ICON)
         (function() {
             const canvas = document.createElement('canvas');
             canvas.width = 512;
@@ -59,4 +58,3 @@
             favIcon.href = iconUrl;
             document.head.appendChild(favIcon);
         })();
-    </script>
